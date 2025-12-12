@@ -4,6 +4,7 @@ import {
   completeReviewSchedule,
   createReviewSchedule,
   getTimesForgotten,
+  initDatabase,
 } from '@/lib/db';
 import { calculateSpacingSchedule, shouldCreateNewSchedule } from '@/lib/spaced-repetition';
 
@@ -12,6 +13,9 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // Ensure database is initialized
+    await initDatabase();
+
     const body = await request.json();
     const { vocabularyId, remembered } = body;
 

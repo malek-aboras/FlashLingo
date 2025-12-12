@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchVocabularyFromSheets } from '@/lib/google-sheets';
-import { upsertVocabulary } from '@/lib/db';
+import { upsertVocabulary, initDatabase } from '@/lib/db';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    // Ensure database is initialized
+    await initDatabase();
+
     // Check if this is a cron job request
     const searchParams = request.nextUrl.searchParams;
     const isCron = searchParams.get('cron') === 'true';

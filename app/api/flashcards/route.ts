@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
-import { getNextFlashcard } from '@/lib/db';
+import { getNextFlashcard, initDatabase } from '@/lib/db';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    // Ensure database is initialized
+    await initDatabase();
+
     const flashcard = await getNextFlashcard();
 
     if (!flashcard) {
