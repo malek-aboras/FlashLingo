@@ -128,7 +128,7 @@ export default function Home() {
                 Set Up Database Now
               </button>
               <p className="text-sm text-gray-600">
-                This will create the necessary database tables
+                This will create the database tables and sync vocabularies from Google Sheets
               </p>
             </div>
           ) : (
