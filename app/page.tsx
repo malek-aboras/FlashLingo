@@ -7,18 +7,23 @@ export default function Home() {
   const [currentCard, setCurrentCard] = useState<FlashcardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [needsSetup, setNeedsSetup] = useState(false);
   const [isDone, setIsDone] = useState(false);
 
   const fetchNextCard = async () => {
     try {
       setLoading(true);
       setError(null);
+      setNeedsSetup(false);
 
       const response = await fetch('/api/flashcards');
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch flashcard');
+        if (data.needsSetup) {
+          setNeedsSetup(true);
+        }
+        throw new Error(data.details || data.error || 'Failed to fetch flashcard');
       }
 
       if (!data.card) {
@@ -71,6 +76,26 @@ export default function Home() {
     handleProgress(false);
   };
 
+  const handleSetup = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch('/api/setup');
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.details || data.error || 'Failed to set up database');
+      }
+
+      // After successful setup, try to fetch a card again
+      await fetchNextCard();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred during setup');
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchNextCard();
   }, []);
@@ -90,14 +115,30 @@ export default function Home() {
     return (
       <div className="flex items-center justify-center min-h-[600px]">
         <div className="text-center bg-red-50 p-8 rounded-lg max-w-md">
-          <h2 className="text-2xl font-bold text-error mb-4">Error</h2>
+          <h2 className="text-2xl font-bold text-error mb-4">
+            {needsSetup ? 'Database Setup Required' : 'Error'}
+          </h2>
           <p className="text-gray-700 mb-6">{error}</p>
-          <button
-            onClick={() => fetchNextCard()}
-            className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Try Again
-          </button>
+          {needsSetup ? (
+            <div className="space-y-3">
+              <button
+                onClick={handleSetup}
+                className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold"
+              >
+                Set Up Database Now
+              </button>
+              <p className="text-sm text-gray-600">
+                This will create the necessary database tables
+              </p>
+            </div>
+          ) : (
+            <button
+              onClick={() => fetchNextCard()}
+              className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Try Again
+            </button>
+          )}
         </div>
       </div>
     );
