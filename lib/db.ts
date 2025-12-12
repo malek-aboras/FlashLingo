@@ -1,4 +1,5 @@
 import { sql } from '@vercel/postgres';
+import { initializeDatabase } from './init-db';
 
 export interface Vocabulary {
   id: number;
@@ -39,6 +40,7 @@ export async function upsertVocabulary(vocab: {
   note?: string;
   example?: string;
 }): Promise<void> {
+  await initializeDatabase();
   await sql`
     INSERT INTO vocabulary (vocab_de, vocab_en, artikel, helping_verb, type, note, example, updated_at)
     VALUES (${vocab.vocab_de}, ${vocab.vocab_en}, ${vocab.artikel || null},
@@ -57,6 +59,7 @@ export async function upsertVocabulary(vocab: {
 
 // Get next flashcard to review
 export async function getNextFlashcard(): Promise<Vocabulary | null> {
+  await initializeDatabase();
   // First, try to get scheduled reviews for today
   const scheduledResult = await sql<Vocabulary>`
     SELECT v.*
