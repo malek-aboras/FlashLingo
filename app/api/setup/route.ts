@@ -1,12 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { fetchVocabularyFromSheets } from '@/lib/google-sheets';
-import { upsertVocabulary } from '@/lib/db';
+import { NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
 
-async function ensureTablesExist() {
+export async function GET() {
   try {
     // Create vocabulary table
     await sql`
@@ -52,68 +50,17 @@ async function ensureTablesExist() {
     await sql`CREATE INDEX IF NOT EXISTS idx_user_progress_vocabulary ON user_progress(vocabulary_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_review_schedule_date ON review_schedule(scheduled_for, completed)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_review_schedule_vocabulary ON review_schedule(vocabulary_id)`;
-  } catch (error) {
-    console.error('Error ensuring tables exist:', error);
-    throw error;
-  }
-}
 
-export async function GET(request: NextRequest) {
-  try {
-    // Check if this is a cron job request
-    const searchParams = request.nextUrl.searchParams;
-    const isCron = searchParams.get('cron') === 'true';
-
-    console.log(`Starting sync (cron: ${isCron})...`);
-
-    // Ensure database tables exist before syncing
-    await ensureTablesExist();
-
-    // Fetch vocabulary from Google Sheets
-    const vocabularyData = await fetchVocabularyFromSheets();
-
-    if (vocabularyData.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: 'No vocabulary data found in Google Sheets',
-        total_imported: 0,
-        new_words: 0,
-        updated_words: 0,
-      });
-    }
-
-    // Upsert each vocabulary item into the database
-    let newWords = 0;
-    let updatedWords = 0;
-
-    for (const vocab of vocabularyData) {
-      try {
-        await upsertVocabulary(vocab);
-        // Note: We're counting all as "updated" since upsert doesn't distinguish
-        // In a production app, we'd track this more precisely
-        updatedWords++;
-      } catch (error) {
-        console.error(`Error upserting vocab: ${vocab.vocab_de}`, error);
-      }
-    }
-
-    const result = {
+    return NextResponse.json({
       success: true,
-      message: 'Sync completed successfully',
-      total_imported: vocabularyData.length,
-      new_words: newWords,
-      updated_words: updatedWords,
-    };
-
-    console.log('Sync result:', result);
-
-    return NextResponse.json(result);
+      message: 'Database tables created successfully',
+    });
   } catch (error) {
-    console.error('Error syncing from Google Sheets:', error);
+    console.error('Error setting up database:', error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to sync vocabulary from Google Sheets',
+        error: 'Failed to set up database',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }

@@ -31,11 +31,29 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Error fetching flashcard:', error);
+
+    // Check if error is related to missing database tables
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const isTableMissingError = errorMessage.includes('relation') &&
+                                 errorMessage.includes('does not exist');
+
+    if (isTableMissingError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database not initialized',
+          details: 'Database tables do not exist. Please run the database setup first by visiting /api/setup',
+          needsSetup: true,
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       {
         success: false,
         error: 'Failed to fetch flashcard',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: errorMessage,
       },
       { status: 500 }
     );
