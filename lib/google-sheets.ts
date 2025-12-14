@@ -1,4 +1,6 @@
-import { google } from 'googleapis';
+import { google } from "googleapis";
+import * as fs from "fs";
+import * as path from "path";
 
 interface VocabularyRow {
   vocab_de: string;
@@ -12,18 +14,17 @@ interface VocabularyRow {
 
 export async function fetchVocabularyFromSheets(): Promise<VocabularyRow[]> {
   try {
-    // Parse service account credentials from environment variable
-    const credentials = JSON.parse(
-      process.env.GOOGLE_SERVICE_ACCOUNT_JSON || '{}'
-    );
+    const credentialsPath = path.join(process.cwd(), "google-profile.json");
+    const credentialsFile = fs.readFileSync(credentialsPath, "utf8");
+    const credentials = JSON.parse(credentialsFile);
 
     // Authenticate with Google Sheets API
     const auth = new google.auth.GoogleAuth({
       credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
     });
 
-    const sheets = google.sheets({ version: 'v4', auth });
+    const sheets = google.sheets({ version: "v4", auth });
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
     const range = `${process.env.GOOGLE_SHEET_NAME}!A:G`;
 
@@ -60,7 +61,7 @@ export async function fetchVocabularyFromSheets(): Promise<VocabularyRow[]> {
 
     return vocabularyData;
   } catch (error) {
-    console.error('Error fetching from Google Sheets:', error);
-    throw new Error('Failed to fetch vocabulary from Google Sheets');
+    console.error("Error fetching from Google Sheets:", error);
+    throw new Error("Failed to fetch vocabulary from Google Sheets");
   }
 }
