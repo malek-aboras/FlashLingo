@@ -52,6 +52,7 @@ async function ensureTablesExist() {
     await sql`CREATE INDEX IF NOT EXISTS idx_user_progress_vocabulary ON user_progress(vocabulary_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_review_schedule_date ON review_schedule(scheduled_for, completed)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_review_schedule_vocabulary ON review_schedule(vocabulary_id)`;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_vocabulary_de_en_unique ON vocabulary(vocab_de, vocab_en)`;
   } catch (error) {
     console.error('Error ensuring tables exist:', error);
     throw error;
