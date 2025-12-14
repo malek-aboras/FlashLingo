@@ -88,10 +88,12 @@ export async function GET(request: NextRequest) {
 
     for (const vocab of vocabularyData) {
       try {
-        await upsertVocabulary(vocab);
-        // Note: We're counting all as "updated" since upsert doesn't distinguish
-        // In a production app, we'd track this more precisely
-        updatedWords++;
+        const isNew = await upsertVocabulary(vocab);
+        if (isNew) {
+          newWords++;
+        } else {
+          updatedWords++;
+        }
       } catch (error) {
         console.error(`Error upserting vocab: ${vocab.vocab_de}`, error);
       }

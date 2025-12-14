@@ -31,6 +31,7 @@ export interface ReviewSchedule {
 }
 
 // Upsert vocabulary into database
+// Returns true if it was a new insert, false if it was an update
 export async function upsertVocabulary(vocab: {
   vocab_de: string;
   vocab_en: string;
@@ -39,8 +40,18 @@ export async function upsertVocabulary(vocab: {
   type?: string;
   note?: string;
   example?: string;
-}): Promise<void> {
+}): Promise<boolean> {
   await initializeDatabase();
+  
+  // Check if the word already exists
+  const existing = await sql`
+    SELECT id FROM vocabulary 
+    WHERE vocab_de = ${vocab.vocab_de} AND vocab_en = ${vocab.vocab_en}
+    LIMIT 1
+  `;
+  
+  const isNew = existing.rows.length === 0;
+  
   await sql`
     INSERT INTO vocabulary (vocab_de, vocab_en, artikel, helping_verb, type, note, example, updated_at)
     VALUES (${vocab.vocab_de}, ${vocab.vocab_en}, ${vocab.artikel || null},
@@ -55,6 +66,8 @@ export async function upsertVocabulary(vocab: {
       example = EXCLUDED.example,
       updated_at = NOW()
   `;
+  
+  return isNew;
 }
 
 // Get next flashcard to review
@@ -62,7 +75,7 @@ export async function getNextFlashcard(): Promise<Vocabulary | null> {
   await initializeDatabase();
   // First, try to get scheduled reviews for today
   const scheduledResult = await sql<Vocabulary>`
-    SELECT v.*
+    SELECT DISTINCT v.*
     FROM vocabulary v
     INNER JOIN review_schedule rs ON v.id = rs.vocabulary_id
     WHERE rs.scheduled_for <= CURRENT_DATE
@@ -79,8 +92,10 @@ export async function getNextFlashcard(): Promise<Vocabulary | null> {
   const newWordResult = await sql<Vocabulary>`
     SELECT v.*
     FROM vocabulary v
-    LEFT JOIN user_progress up ON v.id = up.vocabulary_id
-    WHERE up.id IS NULL
+    WHERE NOT EXISTS (
+      SELECT 1 FROM user_progress up 
+      WHERE up.vocabulary_id = v.id
+    )
     ORDER BY RANDOM()
     LIMIT 1
   `;
@@ -89,7 +104,16 @@ export async function getNextFlashcard(): Promise<Vocabulary | null> {
     return newWordResult.rows[0];
   }
 
-  return null;
+  // If all words have been reviewed, get any word that hasn't been reviewed recently
+  // (fallback to show something)
+  const anyWordResult = await sql<Vocabulary>`
+    SELECT v.*
+    FROM vocabulary v
+    ORDER BY RANDOM()
+    LIMIT 1
+  `;
+
+  return anyWordResult.rows.length > 0 ? anyWordResult.rows[0] : null;
 }
 
 // Record user progress
